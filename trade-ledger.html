@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Trade Ledger · สมุดบันทึกการเทรด</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+<style>
+:root{
+  --bg:#0E1218; --surface:#161C26; --surface2:#1E2632; --line:#2A3340;
+  --text:#E8ECF2; --mut:#8A96A8; --gold:#E0A64B; --profit:#4BD1A0; --loss:#E5695F;
+}
+*{box-sizing:border-box;}
+html,body{margin:0; padding:0;}
+body{
+  font-family:'IBM Plex Sans Thai','Space Grotesk',system-ui,sans-serif;
+  background:
+    radial-gradient(900px 500px at 85% -8%, rgba(224,166,75,0.08), transparent 60%),
+    var(--bg);
+  color:var(--text); min-height:100vh;
+}
+#root{padding:22px clamp(14px,3vw,30px) 60px; max-width:1180px; margin:0 auto;}
+.mono{font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;}
+.profit{color:var(--profit);} .loss{color:var(--loss);}
+.mut{color:var(--mut);}
+button{font-family:inherit; cursor:pointer;}
+button:focus-visible, input:focus-visible, textarea:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+
+/* header */
+.tl-head{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:22px;}
+.tl-brand{display:flex; gap:14px; align-items:center;}
+.tl-mark{font-size:30px; color:var(--gold); line-height:1; letter-spacing:-2px;}
+.tl-brand h1{font-family:'Space Grotesk'; font-size:23px; font-weight:700; margin:0; letter-spacing:-0.5px;}
+.tl-brand p{margin:2px 0 0; color:var(--mut); font-size:12.5px;}
+.tl-head-actions{display:flex; gap:10px; align-items:center;}
+.tl-cur{width:38px; height:38px; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--gold); font-size:16px; font-weight:700;}
+.tl-add{background:var(--gold); color:#1a1206; border:none; padding:10px 16px; border-radius:10px; font-weight:700; font-size:13.5px; letter-spacing:.2px;}
+.tl-add:hover{filter:brightness(1.08);}
+.tl-export{background:var(--surface); color:var(--mut); border:1px solid var(--line); padding:10px 14px; border-radius:10px; font-weight:600; font-size:12.5px;}
+.tl-export:hover{color:var(--text); border-color:var(--gold);}
+
+/* kpis */
+.tl-kpis{display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr 1fr; gap:12px; margin-bottom:18px;}
+.tl-kpi{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:15px 16px; display:flex; flex-direction:column; gap:5px;}
+.tl-kpi.big{background:linear-gradient(160deg,var(--surface2),var(--surface));}
+.tl-kpi-l{color:var(--mut); font-size:11.5px; letter-spacing:.4px; text-transform:uppercase;}
+.tl-kpi-v{font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; font-size:24px; font-weight:700; letter-spacing:-.5px;}
+.tl-kpi.big .tl-kpi-v{font-size:30px;}
+.tl-kpi-v.open{color:var(--gold);}
+.tl-kpi-s{color:var(--mut); font-size:12px;}
+
+/* open positions panel */
+.tl-openpos{background:var(--surface); border:1px solid rgba(224,166,75,0.3); border-radius:14px; padding:14px 16px; margin-bottom:16px;}
+.tl-openpos-h{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+.tl-openpos-list{display:flex; flex-direction:column; gap:8px;}
+.tl-openpos-item{display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:var(--surface2); border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:12.5px;}
+.tl-openpos-sym{font-weight:700; font-size:13px;}
+.tl-openpos-days{color:var(--gold); font-size:11.5px; margin-left:auto;}
+.tl-closebtn{background:var(--gold); color:#1a1206; border:none; padding:7px 13px; border-radius:8px; font-weight:700; font-size:12px;}
+
+/* tabs */
+.tl-tabs{display:flex; align-items:center; gap:6px; margin-bottom:16px; flex-wrap:wrap;}
+.tl-tabs>button{background:transparent; border:none; color:var(--mut); font-size:14px; font-weight:600; padding:8px 12px; border-radius:9px;}
+.tl-tabs>button.on{background:var(--surface2); color:var(--text);}
+.tl-flt{margin-left:auto; display:flex; gap:4px; background:var(--surface); border:1px solid var(--line); padding:3px; border-radius:11px;}
+.tl-flt button{border:none; background:transparent; color:var(--mut); font-size:12.5px; font-weight:600; padding:6px 11px; border-radius:8px;}
+.tl-flt button.on{background:var(--gold); color:#1a1206;}
+
+/* grid */
+.tl-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+.tl-card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+.tl-card.span2{grid-column:span 2;}
+.tl-card-h{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
+.tl-eyebrow{font-family:'Space Grotesk'; font-size:12px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; color:var(--mut);}
+.tl-eyebrow.gold{color:var(--gold);}
+.tl-card-note{color:var(--mut); font-size:12px;}
+
+/* equity chart (custom svg) */
+.tl-eqwrap{position:relative;}
+.tl-eqsvg{width:100%; height:240px; display:block;}
+.tl-eqtip{position:absolute; transform:translateX(-50%); pointer-events:none; z-index:2;}
+
+/* discipline signature */
+.tl-disc{border:1px solid rgba(224,166,75,0.28); background:linear-gradient(180deg, rgba(224,166,75,0.05), var(--surface));}
+.tl-disc-grid{display:grid; grid-template-columns:1fr auto 1fr; gap:14px; align-items:stretch;}
+.tl-disc-block{border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--line);}
+.tl-disc-block.planned{background:rgba(75,209,160,0.07); border-color:rgba(75,209,160,0.25);}
+.tl-disc-block.broke{background:rgba(229,105,95,0.06); border-color:rgba(229,105,95,0.22);}
+.tl-disc-title{font-size:12.5px; color:var(--mut); font-weight:600;}
+.tl-disc-block strong{font-family:'JetBrains Mono'; font-size:23px; font-variant-numeric:tabular-nums;}
+.tl-disc-meta{display:flex; gap:12px; color:var(--mut); font-size:12px;}
+.tl-disc-avg{font-size:12px; color:var(--mut);}
+.tl-disc-vs{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:0 4px; min-width:96px;}
+.tl-disc-vs span{font-size:11px; color:var(--mut); text-transform:uppercase; letter-spacing:.5px;}
+.tl-disc-vs strong{font-family:'JetBrains Mono'; font-size:18px;}
+.tl-disc-vs small{font-size:11px; color:var(--mut);}
+.tl-disc-caption{margin:12px 0 0; font-size:13px; color:var(--text); line-height:1.5; border-top:1px solid var(--line); padding-top:11px;}
+
+/* market bars (custom, div-based) */
+.tl-marketbars{display:flex; flex-direction:column; gap:11px;}
+.tl-marketbar-row{display:grid; grid-template-columns:56px 1fr 88px; gap:10px; align-items:center;}
+.tl-marketbar-label{font-size:12px; color:var(--mut);}
+.tl-marketbar-track{height:20px; background:var(--surface2); border-radius:6px; overflow:hidden;}
+.tl-marketbar-fill{height:100%; border-radius:6px; transition:width .3s;}
+.tl-marketbar-val{font-size:12.5px; text-align:right;}
+.tl-mkt-legend{display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:12px; font-size:12px; color:var(--mut);}
+.tl-mkt-legend span{display:flex; align-items:center; gap:6px;}
+.tl-mkt-legend i{width:9px; height:9px; border-radius:3px; display:inline-block;}
+
+/* averages */
+.tl-avg{display:flex; flex-direction:column; gap:9px;}
+.tl-avg-row{display:flex; justify-content:space-between; font-size:13px; color:var(--mut);}
+.tl-avg-row b{font-family:'JetBrains Mono'; font-size:15px;}
+.tl-avg-bar{height:7px; background:var(--surface2); border-radius:4px; overflow:hidden;}
+.tl-avg-bar>div{height:100%; border-radius:4px;}
+.tl-avg-bar .profit{background:var(--profit);} .tl-avg-bar .loss{background:var(--loss);}
+.tl-avg-foot{display:flex; gap:24px; margin-top:6px; border-top:1px solid var(--line); padding-top:11px;}
+.tl-avg-foot div{display:flex; flex-direction:column; gap:2px;}
+.tl-avg-foot span{font-size:11.5px; color:var(--mut);}
+.tl-avg-foot b{font-family:'JetBrains Mono'; font-size:16px;}
+
+/* overview header (new dashboard-style KPI row) */
+.tl-ovwrap{padding:16px 18px;}
+.tl-ovkpis{display:grid; grid-template-columns:1.1fr 1fr 1fr 1fr 1fr; gap:16px;}
+.tl-ovkpi{display:flex; flex-direction:column; gap:6px; padding-right:14px; border-right:1px solid var(--line);}
+.tl-ovkpis .tl-ovkpi:last-child{border-right:none; padding-right:0;}
+.tl-ov-trend{font-size:11.5px; font-weight:600;}
+.tl-ovkpi-ring{flex-direction:row; align-items:center; justify-content:space-between; gap:10px;}
+.tl-ovkpi-ring>div{display:flex; flex-direction:column; gap:4px;}
+.tl-spark{width:100%; height:34px; display:block; margin-top:2px;}
+.tl-ring{flex-shrink:0;}
+
+/* equity + symbol donut row */
+.tl-eqrow-card{padding:0;}
+.tl-eqrow{display:grid; grid-template-columns:1.6fr 1fr;}
+.tl-eqrow-main{padding:16px 18px; border-right:1px solid var(--line);}
+.tl-eqrow-side{padding:16px 18px; display:flex; flex-direction:column;}
+.tl-donutrow{display:flex; flex-direction:column; align-items:center; gap:14px; margin-top:6px;}
+.tl-donutwrap{position:relative; margin:0 auto;}
+.tl-donut-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0;}
+.tl-donut-center span{font-size:10.5px; color:var(--mut);}
+.tl-donut-center b{font-family:'JetBrains Mono'; font-size:22px; font-weight:700;}
+.tl-symlegend{display:flex; flex-direction:column; gap:7px; width:100%;}
+.tl-symlegend span{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text);}
+.tl-symlegend i{width:9px; height:9px; border-radius:3px; flex-shrink:0;}
+
+/* secondary stats row (streaks, timing) */
+.tl-secgrid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
+.tl-seccard{display:flex; align-items:center; gap:12px; background:var(--surface2); border:1px solid var(--line); border-radius:12px; padding:13px 14px;}
+.tl-seccard>div{display:flex; flex-direction:column; gap:3px;}
+.tl-sec-icon{font-size:20px; flex-shrink:0;}
+.tl-sec-icon.gold{filter:drop-shadow(0 0 0 var(--gold));}
+.tl-sec-icon.loss{color:var(--loss);}
+.tl-sec-icon.blue{color:#5EC8E0;}
+.tl-kpi-v-sm{font-family:'JetBrains Mono'; font-size:16px; font-weight:700;}
+
+/* signal score bar (dashboard) */
+.tl-scorebar{display:grid; grid-template-columns:repeat(5,1fr); gap:8px;}
+.tl-score-seg{display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; background:var(--surface2); border:1px solid var(--line); border-top:3px solid var(--tone); border-radius:10px; padding:12px 8px;}
+.tl-score-seg.empty{opacity:.35; border-top-color:var(--line);}
+.tl-score-short{font-family:'JetBrains Mono'; font-weight:700; font-size:14px; color:var(--tone);}
+.tl-score-label{font-size:11px; color:var(--mut); line-height:1.3;}
+.tl-score-pnl{font-family:'JetBrains Mono'; font-weight:700; font-size:14px; margin-top:2px;}
+.tl-score-meta{font-size:10.5px; color:var(--mut);}
+
+/* signal stats (dashboard) */
+.tl-siggrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px;}
+.tl-sigcol{background:var(--surface2); border:1px solid var(--line); border-radius:12px; padding:12px;}
+.tl-sigcol-h{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:9px; padding-bottom:8px; border-bottom:1px solid var(--line);}
+.tl-sigcol-group{font-size:12px; font-weight:700; color:var(--text);}
+.tl-sigcol-tf{font-size:11px; color:var(--mut); font-family:'JetBrains Mono';}
+.tl-sigrow{display:grid; grid-template-columns:8px 1fr auto auto auto; gap:8px; align-items:center; padding:5px 0; font-size:12px;}
+.tl-sigrow-dot{width:8px; height:8px; border-radius:50%;}
+.tl-sigrow-label{color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.tl-sigrow-n{color:var(--mut); font-size:11px;}
+.tl-sigrow-pnl{font-family:'JetBrains Mono'; font-weight:700; font-size:12px;}
+.tl-sigrow-wr{color:var(--mut); font-family:'JetBrains Mono'; font-size:11px; width:32px; text-align:right;}
+
+/* emotions */
+.tl-emos{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px;}
+.tl-emo{display:flex; gap:11px; align-items:center; background:var(--surface2); border:1px solid var(--line); border-radius:11px; padding:11px 12px;}
+.tl-emo-g{font-size:17px;} .tl-emo-g.good{color:var(--profit);} .tl-emo-g.bad{color:var(--loss);}
+.tl-emo-body{flex:1; min-width:0;}
+.tl-emo-top{display:flex; justify-content:space-between; align-items:baseline;}
+.tl-emo-top b{font-size:13px;} .tl-emo-top span{font-size:11px; color:var(--mut);}
+.tl-emo-pnl{font-family:'JetBrains Mono'; font-size:14px; font-weight:700;}
+
+/* status toggle (form) */
+.tl-statustoggle{display:flex; gap:8px;}
+.tl-statusbtn{flex:1; display:flex; align-items:center; justify-content:center; gap:7px; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px; font-size:13px; font-weight:600; color:var(--mut);}
+.tl-statusbtn i{font-style:normal; font-size:12px;}
+.tl-statusbtn.closed.on{border-color:var(--profit); color:var(--profit); background:rgba(75,209,160,0.08);}
+.tl-statusbtn.open.on{border-color:var(--gold); color:var(--gold); background:rgba(224,166,75,0.1);}
+.tl-openhint{display:flex; gap:9px; align-items:flex-start; background:rgba(224,166,75,0.08); border:1px solid rgba(224,166,75,0.28); border-radius:10px; padding:11px 13px; font-size:12.5px; color:var(--text); line-height:1.5;}
+.tl-openhint i{font-style:normal; color:var(--gold); flex-shrink:0;}
+
+/* table */
+.tl-table-wrap{overflow-x:auto;}
+.tl-table{width:100%; border-collapse:collapse; font-size:13px;}
+.tl-table th{text-align:left; color:var(--mut); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.5px; padding:0 12px 11px; border-bottom:1px solid var(--line); white-space:nowrap;}
+.tl-table th.r, .tl-table td.r{text-align:right;}
+.tl-table td{padding:12px; border-bottom:1px solid rgba(42,51,64,0.5);}
+.tl-table tr:last-child td{border-bottom:none;}
+.tl-chip{font-size:12px; padding:3px 9px; border-radius:20px; background:color-mix(in srgb, var(--c) 16%, transparent); color:var(--c); border:1px solid color-mix(in srgb, var(--c) 34%, transparent); font-weight:600;}
+.tl-dir{font-size:12px; font-weight:600;}
+.tl-dir.long{color:var(--profit);} .tl-dir.short{color:var(--loss);}
+.tl-ok{color:var(--profit);} .tl-no{color:var(--loss);}
+.tl-icon{background:transparent; border:1px solid var(--line); border-radius:7px; width:28px; height:28px; margin-left:5px; color:var(--mut); font-size:12px;}
+.tl-icon:hover{border-color:var(--gold); color:var(--text);}
+.tl-sigcell{display:flex; flex-wrap:wrap; gap:4px; max-width:150px;}
+.tl-sigchip{font-size:10.5px; font-family:'JetBrains Mono'; font-weight:700; padding:2px 6px; border-radius:5px; color:var(--c); background:color-mix(in srgb, var(--c) 14%, transparent); border:1px solid color-mix(in srgb, var(--c) 30%, transparent);}
+.tl-sigchip-score{font-weight:800;}
+.tl-status-open{color:var(--gold); font-size:12px; font-weight:600; white-space:nowrap;}
+.tl-status-closed{color:var(--mut); font-size:12px; white-space:nowrap;}
+.tl-row-open{background:rgba(224,166,75,0.04);}
+
+/* empty */
+.tl-empty{text-align:center; padding:60px 20px; background:var(--surface); border:1px dashed var(--line); border-radius:16px;}
+.tl-empty-mark{font-size:44px; color:var(--gold); opacity:.5;}
+.tl-empty h3{margin:14px 0 6px; font-family:'Space Grotesk'; font-size:19px;}
+.tl-empty p{color:var(--mut); font-size:13.5px; max-width:380px; margin:0 auto 20px; line-height:1.6;}
+
+/* modal */
+.tl-overlay{position:fixed; inset:0; background:rgba(6,9,13,0.72); backdrop-filter:blur(3px); display:flex; align-items:flex-start; justify-content:center; padding:28px 16px; overflow-y:auto; z-index:50;}
+.tl-modal{background:var(--surface); border:1px solid var(--line); border-radius:18px; width:100%; max-width:560px; box-shadow:0 24px 60px rgba(0,0,0,0.5);}
+.tl-modal-h{display:flex; justify-content:space-between; align-items:center; padding:18px 20px; border-bottom:1px solid var(--line);}
+.tl-modal-h h2{margin:0; font-family:'Space Grotesk'; font-size:18px;}
+.tl-x{background:var(--surface2); border:1px solid var(--line); color:var(--mut); width:32px; height:32px; border-radius:9px; font-size:13px;}
+.tl-form{padding:18px 20px; display:flex; flex-direction:column; gap:14px;}
+.tl-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.tl-row.three{grid-template-columns:1fr 1fr 1fr;}
+.tl-field{display:flex; flex-direction:column; gap:6px;}
+.tl-field>span{font-size:12px; color:var(--mut); font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:8px;}
+.tl-field input, .tl-field textarea{background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px 12px; color:var(--text); font-family:inherit; font-size:14px; width:100%;}
+.tl-field input[type=date]{color-scheme:dark;}
+.tl-result-input{font-family:'JetBrains Mono'; font-size:16px !important; font-weight:700;}
+.tl-field textarea{resize:vertical;}
+.tl-seg{display:flex; gap:5px; background:var(--bg); border:1px solid var(--line); padding:4px; border-radius:11px;}
+.tl-seg.two button{flex:1;}
+.tl-seg button{flex:1; background:transparent; border:none; color:var(--mut); font-size:13px; font-weight:600; padding:8px 6px; border-radius:8px;}
+.tl-seg button.on{background:var(--surface2); color:var(--text); box-shadow:inset 0 0 0 1px var(--c,var(--line));}
+.tl-seg button.on.long{color:var(--profit);} .tl-seg button.on.short{color:var(--loss);}
+.tl-suggest{background:rgba(224,166,75,0.15); border:1px solid rgba(224,166,75,0.35); color:var(--gold); font-size:11px; font-weight:600; padding:3px 8px; border-radius:7px; font-family:'JetBrains Mono';}
+.tl-sigform{background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:13px 14px; display:flex; flex-direction:column; gap:12px;}
+.tl-sigform-title{font-size:12px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:.6px;}
+.tl-sigform-group{display:flex; flex-direction:column; gap:7px;}
+.tl-sigform-group-label{font-size:12.5px; font-weight:600; color:var(--mut);}
+.tl-sigform-row{display:flex; align-items:center; gap:10px;}
+.tl-sigform-tf{font-size:11.5px; color:var(--mut); width:48px; flex-shrink:0; font-family:'JetBrains Mono';}
+.tl-macd-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+.tl-macd-btn{display:flex; flex-direction:column; align-items:flex-start; gap:2px; background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:8px 10px; text-align:left;}
+.tl-macd-btn b{font-size:12px; color:var(--text); font-weight:600;}
+.tl-macd-btn span{font-size:11px; color:var(--mut);}
+.tl-macd-btn.on{border-color:var(--tone); background:color-mix(in srgb, var(--tone) 12%, transparent);}
+.tl-macd-btn.on span{color:var(--tone);}
+.tl-scoreprev{display:flex; align-items:center; gap:11px; background:var(--surface); border:1px solid var(--tone,var(--line)); border-radius:10px; padding:10px 12px;}
+.tl-scoreprev.empty{border-color:var(--line);}
+.tl-scoreprev.empty span{font-size:12px; font-weight:600; color:var(--mut);}
+.tl-scoreprev.empty small{font-size:11.5px; color:var(--mut); margin-left:6px;}
+.tl-scoreprev-badge{font-family:'JetBrains Mono'; font-weight:700; font-size:15px; color:var(--tone); background:color-mix(in srgb, var(--tone) 15%, transparent); border-radius:8px; padding:6px 10px; min-width:38px; text-align:center;}
+.tl-scoreprev-body{display:flex; flex-direction:column; gap:1px;}
+.tl-scoreprev-body b{font-size:13px;}
+.tl-scoreprev-body small{font-size:11px; color:var(--mut);}
+.tl-emo-pick{display:grid; grid-template-columns:repeat(3,1fr); gap:6px;}
+.tl-emo-pick button{display:flex; align-items:center; gap:6px; justify-content:center; background:var(--bg); border:1px solid var(--line); color:var(--mut); font-size:12px; font-weight:600; padding:9px 6px; border-radius:9px;}
+.tl-emo-pick button i{font-style:normal; font-size:13px;}
+.tl-emo-pick button.g.on{border-color:var(--profit); color:var(--profit); background:rgba(75,209,160,0.08);}
+.tl-emo-pick button.b.on{border-color:var(--loss); color:var(--loss); background:rgba(229,105,95,0.08);}
+.tl-range{accent-color:var(--gold); width:100%;}
+.tl-modal-f{display:flex; justify-content:flex-end; gap:10px; padding:16px 20px; border-top:1px solid var(--line);}
+.tl-ghost{background:transparent; border:1px solid var(--line); color:var(--mut); padding:10px 16px; border-radius:10px; font-weight:600; font-size:13.5px;}
+.tl-save{background:var(--gold); color:#1a1206; border:none; padding:10px 18px; border-radius:10px; font-weight:700; font-size:13.5px;}
+.tl-save:disabled{opacity:.4; cursor:not-allowed;}
+
+/* tooltip */
+.tl-tip{background:#0B0F15; border:1px solid var(--line); border-radius:9px; padding:9px 11px; font-size:12px; line-height:1.55;}
+.tl-tip b{font-family:'JetBrains Mono';}
+
+@media (max-width:720px){
+  .tl-kpis{grid-template-columns:1fr 1fr;}
+  .tl-grid{grid-template-columns:1fr;}
+  .tl-card.span2{grid-column:span 1;}
+  .tl-disc-grid{grid-template-columns:1fr;}
+  .tl-disc-vs{flex-direction:row; gap:8px; min-width:0;}
+  .tl-row, .tl-row.three{grid-template-columns:1fr;}
+  .tl-flt{margin-left:0; width:100%; overflow-x:auto;}
+  .tl-scorebar{grid-template-columns:repeat(2,1fr);}
+  .tl-ovkpis{grid-template-columns:1fr 1fr;}
+  .tl-ovkpi{border-right:none; border-bottom:1px solid var(--line); padding-right:0; padding-bottom:12px;}
+  .tl-eqrow{grid-template-columns:1fr;}
+  .tl-eqrow-main{border-right:none; border-bottom:1px solid var(--line);}
+  .tl-secgrid{grid-template-columns:1fr 1fr;}
+}
+@media (prefers-reduced-motion:reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+/* ============================================================
+   Trade Ledger — standalone web app version
+   Persistence: browser localStorage (works offline, per-browser)
+============================================================ */
+
+const STORAGE_KEY = "trade_ledger_v1";
+
+const MARKETS = {
+  crypto: { label: "Crypto", th: "คริปโต", color: "#7B8CFF", symbols: ["BTC", "ETH", "SOL", "XRP"] },
+  gold:   { label: "Gold",   th: "ทองคำ",  color: "#E0A64B", symbols: ["XAU", "GC", "GLD"] },
+  oil:    { label: "Oil",    th: "น้ำมัน",  color: "#C77D4A", symbols: ["WTI", "BRENT", "CL"] },
+  currency: { label: "Currency", th: "ค่าเงิน", color: "#5EC8E0", symbols: ["EUR/USD", "GBP/USD", "USD/JPY", "USD/THB", "DXY"] },
+};
+
+const EMOTIONS = {
+  calm:      { th: "สงบ/มีสติ",  glyph: "◇", good: true },
+  confident: { th: "มั่นใจ",     glyph: "◆", good: true },
+  fomo:      { th: "โลภ/FOMO",   glyph: "▲", good: false },
+  fear:      { th: "กลัว",       glyph: "▽", good: false },
+  revenge:   { th: "แก้แค้น",     glyph: "✕", good: false },
+  impatient: { th: "ใจร้อน",     glyph: "≈", good: false },
+};
+
+/* ---------- entry signals (CDC Action Zone / Dow Theory / MACD) ---------- */
+const CDC_STATES = {
+  green: { label: "เขียว", short: "G", tone: "up" },
+  red:   { label: "แดง",   short: "R", tone: "down" },
+};
+const DOW_STATES = {
+  break_high: { label: "เบรคหัว",  short: "BH", tone: "up" },
+  break_low:  { label: "หลุดตูด",  short: "BL", tone: "down" },
+};
+const MACD_STATES = {
+  cross_down_zero:  { label: "ตัดลง Zeroline",   trend: "ลงแรง",  tone: "down" },
+  cross_up_under:   { label: "ตัดขึ้นใต้น้ำ",     trend: "Sideway", tone: "side" },
+  cross_down_under: { label: "ตัดลงใต้น้ำ",       trend: "ลงแรง",  tone: "down" },
+  cross_down_over:  { label: "ตัดลงเหนือน้ำ",     trend: "Sideway", tone: "side" },
+  cross_up_over:    { label: "ตัดขึ้นเหนือน้ำ",    trend: "ขึ้นแรง", tone: "up" },
+  cross_up_zero:    { label: "ตัดขึ้น Zeroline",  trend: "ขึ้นแรง", tone: "up" },
+};
+const TONE_COLOR = { up: "#4BD1A0", down: "#E5695F", side: "#8A96A8" };
+
+const SIGNAL_FIELDS = [
+  { key: "cdcDay",  group: "CDC Action Zone", label: "TF Day", states: CDC_STATES },
+  { key: "cdc2h",   group: "CDC Action Zone", label: "TF 2H",  states: CDC_STATES },
+  { key: "dowDay",  group: "Dow Theory",      label: "TF Day", states: DOW_STATES },
+  { key: "dow2h",   group: "Dow Theory",      label: "TF 2H",  states: DOW_STATES },
+  { key: "macdDay", group: "MACD",            label: "TF Day", states: MACD_STATES },
+];
+
+/* ---------- signal score (conviction) ---------- */
+const SCORE_BUCKETS = [
+  { key: "long_high",  label: "มั่นใจสูง (Long)",  short: "L++", tone: "up"   },
+  { key: "long_lean",  label: "เอียง Long",        short: "L+",  tone: "up"   },
+  { key: "neutral",    label: "เป็นกลาง/ขัดแย้ง",   short: "=",   tone: "side" },
+  { key: "short_lean", label: "เอียง Short",       short: "S+",  tone: "down" },
+  { key: "short_high", label: "มั่นใจสูง (Short)",  short: "S++", tone: "down" },
+];
+function signalScore(signals) {
+  let sum = 0, n = 0;
+  for (const f of SIGNAL_FIELDS) {
+    const v = signals && signals[f.key];
+    if (!v) continue;
+    n++;
+    const tone = f.states[v].tone;
+    if (tone === "up") sum += 1; else if (tone === "down") sum -= 1;
+  }
+  if (n === 0) return null;
+  const pct = sum / n;
+  let key;
+  if (pct >= 0.6) key = "long_high";
+  else if (pct > 0) key = "long_lean";
+  else if (pct === 0) key = "neutral";
+  else if (pct > -0.6) key = "short_lean";
+  else key = "short_high";
+  const bucket = SCORE_BUCKETS.find((b) => b.key === key);
+  return { sum, n, pct, ...bucket };
+}
+
+/* ---------- storage layer (localStorage) ---------- */
+function loadAll() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { console.error("load failed", e); return null; }
+}
+function saveAll(state) {
+  try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { console.error("save failed", e); }
+}
+
+/* ---------- helpers ---------- */
+const uid = () =>
+  (typeof crypto !== "undefined" && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
+function money(n, cur, sign = true) {
+  const v = Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const s = n < 0 ? "−" : sign ? "+" : "";
+  return `${s}${cur}${v}`;
+}
+function shortDate(d) {
+  const dt = new Date(d + "T00:00:00");
+  return dt.toLocaleDateString("th-TH", { day: "2-digit", month: "short" });
+}
+function daysSince(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  const diff = Math.max(0, Math.round((Date.now() - d.getTime()) / 86400000));
+  return diff === 0 ? "วันนี้" : `${diff} วันที่แล้ว`;
+}
+const numOrNull = (v) => (v === "" || isNaN(parseFloat(v)) ? null : parseFloat(v));
+const barW = (a, b) => `${Math.min(100, (a / Math.max(a, b, 1)) * 100)}%`;
+
+/* ============================================================ */
+function App() {
+  const initial = useMemo(() => loadAll(), []);
+  const [trades, setTrades] = useState(initial?.trades || []);
+  const [cur, setCur] = useState(initial?.cur || "$");
+  const [view, setView] = useState("dashboard");
+  const [filter, setFilter] = useState("all");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+
+  useEffect(() => { saveAll({ trades, cur }); }, [trades, cur]);
+
+  const upsert = useCallback((t) => {
+    setTrades((prev) => {
+      const i = prev.findIndex((x) => x.id === t.id);
+      if (i === -1) return [...prev, t];
+      const copy = [...prev]; copy[i] = t; return copy;
+    });
+  }, []);
+  const remove = useCallback((id) => {
+    if (!window.confirm("ลบเทรดนี้ใช่ไหม?")) return;
+    setTrades((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
+  const filtered = useMemo(
+    () => trades.filter((t) => filter === "all" || t.market === filter),
+    [trades, filter]
+  );
+  const openPositions = useMemo(() => filtered.filter((t) => t.status === "open"), [filtered]);
+  const closedTrades = useMemo(() => filtered.filter((t) => t.status !== "open"), [filtered]);
+  const stats = useMemo(() => computeStats(closedTrades), [closedTrades]);
+
+  const exportJSON = () => {
+    const blob = new Blob([JSON.stringify({ trades, cur }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `trade-ledger-${todayStr()}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="tl-root">
+      <header className="tl-head">
+        <div className="tl-brand">
+          <span className="tl-mark">▚</span>
+          <div>
+            <h1>Trade Ledger</h1>
+            <p>สมุดบันทึกการเทรด · คริปโต · ทองคำ · น้ำมัน</p>
+          </div>
+        </div>
+        <div className="tl-head-actions">
+          <button className="tl-export" onClick={exportJSON} title="ส่งออกข้อมูลเป็นไฟล์ JSON สำรอง">⤓ Export</button>
+          <button
+            className="tl-cur"
+            onClick={() => setCur((c) => (c === "$" ? "฿" : "$"))}
+            title="สลับสกุลเงินที่แสดง"
+          >{cur}</button>
+          <button className="tl-add" onClick={() => { setEditing(null); setFormOpen(true); }}>
+            + บันทึกเทรด
+          </button>
+        </div>
+      </header>
+
+      <section className="tl-kpis">
+        <Kpi label="กำไรสุทธิ" value={money(stats.net, cur)} tone={stats.net >= 0 ? "profit" : "loss"} big />
+        <Kpi label="อัตราชนะ" value={`${stats.winRate}%`} sub={`${stats.wins}W / ${stats.losses}L`} />
+        <Kpi label="Profit factor" value={stats.pf === Infinity ? "∞" : stats.pf.toFixed(2)} />
+        <Kpi label="จำนวนเทรด" value={String(stats.count)} sub={`สตรีค ${stats.streakLabel}`} />
+        <Kpi label="เปิดสถานะอยู่" value={String(openPositions.length)} tone={openPositions.length ? "open" : ""} />
+      </section>
+
+      {openPositions.length > 0 && (
+        <OpenPositions items={openPositions} onClose={(t) => { setEditing(t); setFormOpen(true); }} />
+      )}
+
+      <nav className="tl-tabs">
+        <button className={view === "dashboard" ? "on" : ""} onClick={() => setView("dashboard")}>ภาพรวม</button>
+        <button className={view === "log" ? "on" : ""} onClick={() => setView("log")}>รายการเทรด</button>
+        <div className="tl-flt">
+          {["all", "crypto", "gold", "oil", "currency"].map((k) => (
+            <button key={k} className={filter === k ? "on" : ""} onClick={() => setFilter(k)}>
+              {k === "all" ? "ทั้งหมด" : MARKETS[k].th}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      <main>
+        {stats.count === 0 && openPositions.length === 0 ? (
+          <Empty onAdd={() => { setEditing(null); setFormOpen(true); }} />
+        ) : view === "dashboard" ? (
+          <Dashboard stats={stats} cur={cur} />
+        ) : (
+          <Log
+            trades={[...filtered].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))}
+            cur={cur}
+            onEdit={(t) => { setEditing(t); setFormOpen(true); }}
+            onDelete={remove}
+          />
+        )}
+      </main>
+
+      {formOpen && (
+        <TradeForm
+          initial={editing}
+          cur={cur}
+          onClose={() => setFormOpen(false)}
+          onSave={(t) => { upsert(t); setFormOpen(false); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   STATS
+============================================================ */
+function computeStats(trades) {
+  const count = trades.length;
+  const net = trades.reduce((s, t) => s + t.result, 0);
+  const wins = trades.filter((t) => t.result > 0);
+  const losses = trades.filter((t) => t.result < 0);
+  const grossWin = wins.reduce((s, t) => s + t.result, 0);
+  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.result, 0));
+  const pf = grossLoss === 0 ? (grossWin > 0 ? Infinity : 0) : grossWin / grossLoss;
+  const winRate = count ? Math.round((wins.length / count) * 100) : 0;
+  const avgWin = wins.length ? grossWin / wins.length : 0;
+  const avgLoss = losses.length ? -grossLoss / losses.length : 0;
+
+  const ordered = [...trades].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  let cum = 0;
+  const equity = ordered.map((t, i) => {
+    cum += t.result;
+    return { i: i + 1, date: t.date, equity: Math.round(cum * 100) / 100, r: t.result };
+  });
+
+  let streak = 0, streakType = null;
+  for (let i = ordered.length - 1; i >= 0; i--) {
+    const w = ordered[i].result >= 0;
+    const type = w ? "win" : "loss";
+    if (streakType === null) { streakType = type; streak = 1; }
+    else if (streakType === type) streak++;
+    else break;
+  }
+  const streakLabel = streakType ? `${streak} ${streakType === "win" ? "ชนะ" : "แพ้"}` : "—";
+
+  const byMarket = Object.keys(MARKETS).map((k) => {
+    const ts = trades.filter((t) => t.market === k);
+    const p = ts.reduce((s, t) => s + t.result, 0);
+    const w = ts.filter((t) => t.result > 0).length;
+    return { key: k, ...MARKETS[k], pnl: Math.round(p * 100) / 100, n: ts.length, wr: ts.length ? Math.round((w / ts.length) * 100) : 0 };
+  }).filter((m) => m.n > 0);
+
+  const planned = trades.filter((t) => t.followedPlan);
+  const broke = trades.filter((t) => !t.followedPlan);
+  const disc = { planned: groupResult(planned), broke: groupResult(broke) };
+
+  const byEmotion = Object.keys(EMOTIONS).map((k) => {
+    const ts = trades.filter((t) => t.emotion === k);
+    const p = ts.reduce((s, t) => s + t.result, 0);
+    return { key: k, ...EMOTIONS[k], pnl: Math.round(p * 100) / 100, n: ts.length, avg: ts.length ? p / ts.length : 0 };
+  }).filter((e) => e.n > 0).sort((a, b) => b.pnl - a.pnl);
+
+  const signals = SIGNAL_FIELDS.map((f) => {
+    const breakdown = Object.entries(f.states).map(([sk, sv]) => {
+      const ts = trades.filter((t) => t.signals && t.signals[f.key] === sk);
+      const p = ts.reduce((s, t) => s + t.result, 0);
+      const w = ts.filter((t) => t.result > 0).length;
+      return { key: sk, ...sv, n: ts.length, pnl: Math.round(p * 100) / 100, wr: ts.length ? Math.round((w / ts.length) * 100) : 0 };
+    }).filter((b) => b.n > 0);
+    return { ...f, breakdown };
+  }).filter((s) => s.breakdown.length > 0);
+
+  const scoreBuckets = SCORE_BUCKETS.map((b) => {
+    const ts = trades.filter((t) => { const s = signalScore(t.signals); return s && s.key === b.key; });
+    const p = ts.reduce((s, t) => s + t.result, 0);
+    const w = ts.filter((t) => t.result > 0).length;
+    return { ...b, n: ts.length, pnl: Math.round(p * 100) / 100, wr: ts.length ? Math.round((w / ts.length) * 100) : 0 };
+  }).filter((b) => b.n > 0);
+
+  // trend: net of second half vs first half (by trade order) — approximates "vs previous period"
+  let trendPct = null;
+  if (ordered.length >= 4) {
+    const half = Math.floor(ordered.length / 2);
+    const firstNet = ordered.slice(0, half).reduce((s, t) => s + t.result, 0);
+    const secondNet = ordered.slice(half).reduce((s, t) => s + t.result, 0);
+    if (firstNet !== 0) trendPct = Math.round(((secondNet - firstNet) / Math.abs(firstNet)) * 1000) / 10;
+  }
+
+  // rolling sparkline series for avg-win / avg-loss / R:R cards
+  const winsOrdered = ordered.filter((t) => t.result > 0);
+  const lossesOrdered = ordered.filter((t) => t.result < 0);
+  let rw = 0;
+  const avgWinSeries = winsOrdered.map((t, i) => { rw += t.result; return rw / (i + 1); });
+  let rl = 0;
+  const avgLossSeries = lossesOrdered.map((t, i) => { rl += t.result; return rl / (i + 1); });
+  const rrSeries = [];
+  { let sw = 0, wc = 0, sl = 0, lc = 0;
+    for (const t of ordered) {
+      if (t.result > 0) { sw += t.result; wc++; } else if (t.result < 0) { sl += t.result; lc++; }
+      if (wc > 0 && lc > 0) rrSeries.push(Math.abs((sw / wc) / (sl / lc)));
+    }
+  }
+
+  // longest win / loss streaks (all-time, not just current)
+  let curType = null, curLen = 0, maxWinStreak = 0, maxLossStreak = 0;
+  for (const t of ordered) {
+    const type = t.result >= 0 ? "win" : "loss";
+    curLen = type === curType ? curLen + 1 : 1;
+    curType = type;
+    if (type === "win") maxWinStreak = Math.max(maxWinStreak, curLen);
+    else maxLossStreak = Math.max(maxLossStreak, curLen);
+  }
+
+  // best day of week
+  const DOW_TH = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+  const dowAgg = Array.from({ length: 7 }, () => ({ n: 0, w: 0 }));
+  ordered.forEach((t) => {
+    const d = new Date(t.date + "T00:00:00").getDay();
+    dowAgg[d].n++; if (t.result > 0) dowAgg[d].w++;
+  });
+  let bestDay = null;
+  dowAgg.forEach((a, i) => {
+    if (a.n === 0) return;
+    const wr = Math.round((a.w / a.n) * 100);
+    if (!bestDay || wr > bestDay.wr || (wr === bestDay.wr && a.n > bestDay.n)) bestDay = { day: DOW_TH[i], wr, n: a.n };
+  });
+
+  // best time-of-day window (only if entry time was recorded)
+  const withTime = ordered.filter((t) => t.time);
+  let bestTime = null;
+  if (withTime.length) {
+    const buckets = Array.from({ length: 8 }, () => ({ n: 0, w: 0 }));
+    withTime.forEach((t) => {
+      const hh = parseInt(t.time.split(":")[0], 10);
+      const b = Math.min(7, Math.max(0, Math.floor(hh / 3)));
+      buckets[b].n++; if (t.result > 0) buckets[b].w++;
+    });
+    buckets.forEach((b, i) => {
+      if (b.n === 0) return;
+      const wr = Math.round((b.w / b.n) * 100);
+      const label = `${String(i * 3).padStart(2, "0")}:00-${String(i * 3 + 3).padStart(2, "0")}:00`;
+      if (!bestTime || wr > bestTime.wr || (wr === bestTime.wr && b.n > bestTime.n)) bestTime = { label, wr, n: b.n };
+    });
+  }
+
+  // symbol breakdown donut (top 4 + "อื่นๆ")
+  const DONUT_COLORS = ["#4BD1A0", "#5EC8E0", "#8B7CF6", "#E5695F", "#8A96A8"];
+  const symAgg = {};
+  ordered.forEach((t) => {
+    const key = (t.symbol && t.symbol.trim()) ? t.symbol.trim().toUpperCase() : "อื่นๆ";
+    symAgg[key] = (symAgg[key] || 0) + 1;
+  });
+  let symArr = Object.entries(symAgg).map(([k, n]) => ({ key: k, n })).sort((a, b) => b.n - a.n);
+  let symTop = symArr.slice(0, 4);
+  const symRestN = symArr.slice(4).reduce((s, x) => s + x.n, 0);
+  if (symRestN > 0) symTop.push({ key: "อื่นๆ", n: symRestN });
+  const symTotal = symTop.reduce((s, x) => s + x.n, 0) || 1;
+  const symbolDonut = symTop.map((x, i) => ({ ...x, pct: Math.round((x.n / symTotal) * 1000) / 10, color: DONUT_COLORS[i % DONUT_COLORS.length] }));
+
+  return { count, net, wins: wins.length, losses: losses.length, winRate, pf,
+           avgWin, avgLoss, equity, streakLabel, byMarket, disc, byEmotion, signals, scoreBuckets,
+           trendPct, avgWinSeries, avgLossSeries, rrSeries, maxWinStreak, maxLossStreak,
+           bestDay, bestTime, symbolDonut };
+}
+function groupResult(ts) {
+  const n = ts.length;
+  const p = ts.reduce((s, t) => s + t.result, 0);
+  const w = ts.filter((t) => t.result > 0).length;
+  return { n, pnl: Math.round(p * 100) / 100, avg: n ? p / n : 0, wr: n ? Math.round((w / n) * 100) : 0 };
+}
+
+/* ============================================================
+   DASHBOARD
+============================================================ */
+function Dashboard({ stats, cur }) {
+  if (stats.count === 0) {
+    return (
+      <div className="tl-card">
+        <p className="mut" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6 }}>
+          ยังไม่มีเทรดที่ปิดสถานะ สถิติและกราฟจะขึ้นทันทีที่คุณปิดโพซิชันแรก — ดูรายการที่เปิดอยู่ด้านบนได้เลย
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="tl-grid">
+      <OverviewHeader stats={stats} cur={cur} />
+
+      <div className="tl-card span2 tl-eqrow-card">
+        <div className="tl-eqrow">
+          <div className="tl-eqrow-main">
+            <div className="tl-card-h">
+              <span className="tl-eyebrow">ผลกำไรสะสม</span>
+              <span className="tl-card-note">{stats.equity.length} เทรด</span>
+            </div>
+            <EquityChart data={stats.equity} cur={cur} />
+          </div>
+          <div className="tl-eqrow-side">
+            <div className="tl-card-h"><span className="tl-eyebrow">สรุปตามสัญลักษณ์</span></div>
+            <SymbolDonut data={stats.symbolDonut} total={stats.count} />
+          </div>
+        </div>
+      </div>
+
+      <SecondaryStats stats={stats} />
+
+      <div className="tl-card span2 tl-disc">
+        <div className="tl-card-h"><span className="tl-eyebrow gold">รายงานวินัย · ตามแผน vs หลุดแผน</span></div>
+        <div className="tl-disc-grid">
+          <DiscBlock title="ทำตามแผน" data={stats.disc.planned} cur={cur} good />
+          <div className="tl-disc-vs">
+            <span>ส่วนต่าง</span>
+            <strong className={stats.disc.planned.avg - stats.disc.broke.avg >= 0 ? "profit" : "loss"}>
+              {money(stats.disc.planned.avg - stats.disc.broke.avg, cur)}
+            </strong>
+            <small>ต่อเทรด</small>
+          </div>
+          <DiscBlock title="หลุดแผน" data={stats.disc.broke} cur={cur} />
+        </div>
+        <p className="tl-disc-caption">{disciplineVerdict(stats.disc, cur)}</p>
+      </div>
+
+      <div className="tl-card">
+        <div className="tl-card-h"><span className="tl-eyebrow">กำไร/ขาดทุน ตามตลาด</span></div>
+        <MarketBars data={stats.byMarket} cur={cur} />
+        <div className="tl-mkt-legend">
+          {stats.byMarket.map((m) => (
+            <span key={m.key}><i style={{ background: m.color }} />{m.th} · {m.wr}% · {m.n}</span>
+          ))}
+        </div>
+      </div>
+
+      <div className="tl-card">
+        <div className="tl-card-h"><span className="tl-eyebrow">ค่าเฉลี่ย</span></div>
+        <div className="tl-avg">
+          <div className="tl-avg-row"><span>กำไรเฉลี่ย/ไม้ชนะ</span><b className="profit">{money(stats.avgWin, cur)}</b></div>
+          <div className="tl-avg-bar"><div className="profit" style={{ width: barW(stats.avgWin, stats.avgLoss) }} /></div>
+          <div className="tl-avg-row"><span>ขาดทุนเฉลี่ย/ไม้แพ้</span><b className="loss">{money(stats.avgLoss, cur)}</b></div>
+          <div className="tl-avg-bar"><div className="loss" style={{ width: barW(Math.abs(stats.avgLoss), Math.abs(stats.avgWin)) }} /></div>
+          <div className="tl-avg-foot">
+            <div><span>อัตราชนะ</span><b>{stats.winRate}%</b></div>
+            <div><span>R:R เฉลี่ย</span><b>{stats.avgLoss ? Math.abs(stats.avgWin / stats.avgLoss).toFixed(2) : "—"}</b></div>
+          </div>
+        </div>
+      </div>
+
+      {stats.scoreBuckets.length > 0 && (
+        <div className="tl-card span2">
+          <div className="tl-card-h"><span className="tl-eyebrow">คะแนนสัญญาณ · ความสอดคล้องของ CDC + Dow + MACD</span></div>
+          <div className="tl-scorebar">
+            {SCORE_BUCKETS.map((b) => {
+              const s = stats.scoreBuckets.find((x) => x.key === b.key);
+              return (
+                <div key={b.key} className={`tl-score-seg ${s ? "" : "empty"}`} style={{ "--tone": TONE_COLOR[b.tone] }}>
+                  <span className="tl-score-short">{b.short}</span>
+                  <span className="tl-score-label">{b.label}</span>
+                  {s ? (
+                    <>
+                      <span className={`tl-score-pnl ${s.pnl >= 0 ? "profit" : "loss"}`}>{money(s.pnl, cur)}</span>
+                      <span className="tl-score-meta">{s.n} เทรด · ชนะ {s.wr}%</span>
+                    </>
+                  ) : <span className="tl-score-meta">ไม่มีข้อมูล</span>}
+                </div>
+              );
+            })}
+          </div>
+          <p className="tl-disc-caption">{scoreVerdict(stats.scoreBuckets)}</p>
+        </div>
+      )}
+
+      {stats.signals.length > 0 && (
+        <div className="tl-card span2">
+          <div className="tl-card-h"><span className="tl-eyebrow">สัญญาณเข้าเทรด → ผลลัพธ์</span></div>
+          <div className="tl-siggrid">
+            {stats.signals.map((s) => (
+              <div key={s.key} className="tl-sigcol">
+                <div className="tl-sigcol-h">
+                  <span className="tl-sigcol-group">{s.group}</span>
+                  <span className="tl-sigcol-tf">{s.label}</span>
+                </div>
+                {s.breakdown.map((b) => (
+                  <div key={b.key} className="tl-sigrow">
+                    <span className="tl-sigrow-dot" style={{ background: TONE_COLOR[b.tone] }} />
+                    <span className="tl-sigrow-label">{b.label}{b.trend ? ` · ${b.trend}` : ""}</span>
+                    <span className="tl-sigrow-n">{b.n} เทรด</span>
+                    <span className={`tl-sigrow-pnl ${b.pnl >= 0 ? "profit" : "loss"}`}>{money(b.pnl, cur)}</span>
+                    <span className="tl-sigrow-wr">{b.wr}%</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {stats.byEmotion.length > 0 && (
+        <div className="tl-card span2">
+          <div className="tl-card-h"><span className="tl-eyebrow">อารมณ์ ณ ตอนเข้าเทรด → ผลลัพธ์</span></div>
+          <div className="tl-emos">
+            {stats.byEmotion.map((e) => (
+              <div key={e.key} className="tl-emo">
+                <span className={`tl-emo-g ${e.good ? "good" : "bad"}`}>{e.glyph}</span>
+                <div className="tl-emo-body">
+                  <div className="tl-emo-top"><b>{e.th}</b><span>{e.n} เทรด</span></div>
+                  <div className={`tl-emo-pnl ${e.pnl >= 0 ? "profit" : "loss"}`}>{money(e.pnl, cur)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- overview header: net profit + win-rate ring + rolling sparklines ---------- */
+function OverviewHeader({ stats, cur }) {
+  const rr = stats.avgLoss ? Math.abs(stats.avgWin / stats.avgLoss) : null;
+  return (
+    <div className="tl-card span2 tl-ovwrap">
+      <div className="tl-ovkpis">
+        <div className="tl-ovkpi">
+          <span className="tl-kpi-l">กำไรสุทธิ</span>
+          <span className={`tl-kpi-v ${stats.net >= 0 ? "profit" : "loss"}`}>{money(stats.net, cur)}</span>
+          {stats.trendPct !== null && (
+            <span className={`tl-ov-trend ${stats.trendPct >= 0 ? "profit" : "loss"}`}>
+              {stats.trendPct >= 0 ? "▲" : "▼"} {Math.abs(stats.trendPct)}% จากช่วงก่อนหน้า
+            </span>
+          )}
+        </div>
+
+        <div className="tl-ovkpi tl-ovkpi-ring">
+          <div>
+            <span className="tl-kpi-l">อัตราชนะ</span>
+            <span className="tl-kpi-v">{stats.winRate}%</span>
+            <span className="tl-kpi-s">{stats.wins}W / {stats.losses}L</span>
+          </div>
+          <RingProgress percent={stats.winRate} color="#4BD1A0" />
+        </div>
+
+        <div className="tl-ovkpi">
+          <span className="tl-kpi-l">กำไรเฉลี่ยต่อเทรด</span>
+          <span className="tl-kpi-v profit">{money(stats.avgWin, cur)}</span>
+          <Sparkline data={stats.avgWinSeries} color="#4BD1A0" />
+        </div>
+
+        <div className="tl-ovkpi">
+          <span className="tl-kpi-l">ขาดทุนเฉลี่ยต่อเทรด</span>
+          <span className="tl-kpi-v loss">{money(stats.avgLoss, cur)}</span>
+          <Sparkline data={stats.avgLossSeries} color="#E5695F" />
+        </div>
+
+        <div className="tl-ovkpi">
+          <span className="tl-kpi-l">Risk/Reward เฉลี่ย</span>
+          <span className="tl-kpi-v">{rr ? `${rr.toFixed(2)} : 1` : "—"}</span>
+          <Sparkline data={stats.rrSeries} color="#5EC8E0" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Sparkline({ data, color }) {
+  const W = 100, H = 34;
+  if (!data || data.length < 2) return <svg viewBox={`0 0 ${W} ${H}`} className="tl-spark" />;
+  const min = Math.min(...data), max = Math.max(...data);
+  const span = (max - min) || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * W;
+    const y = H - ((v - min) / span) * H;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="tl-spark" preserveAspectRatio="none">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+function RingProgress({ percent, color, size = 60, strokeWidth = 8 }) {
+  const r = (size - strokeWidth) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(100, percent));
+  const dash = (pct / 100) * c;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="tl-ring">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#2A3340" strokeWidth={strokeWidth} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={strokeWidth}
+        strokeDasharray={`${dash} ${c - dash}`} strokeLinecap="round"
+        transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+    </svg>
+  );
+}
+
+function SymbolDonut({ data, total }) {
+  if (!data || data.length === 0) return <p className="mut" style={{ fontSize: 12.5 }}>ยังไม่มีข้อมูลสัญลักษณ์</p>;
+  const size = 132, strokeWidth = 20, r = (size - strokeWidth) / 2, c = 2 * Math.PI * r;
+  let offset = 0;
+  const arcs = data.map((s) => {
+    const len = (s.pct / 100) * c;
+    const arc = { ...s, len, offset };
+    offset += len;
+    return arc;
+  });
+  return (
+    <div className="tl-donutrow">
+      <div className="tl-donutwrap" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          {arcs.map((s, i) => (
+            <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={s.color} strokeWidth={strokeWidth}
+              strokeDasharray={`${s.len} ${c - s.len}`} strokeDashoffset={-s.offset}
+              transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+          ))}
+        </svg>
+        <div className="tl-donut-center">
+          <span>รวม</span>
+          <b>{total}</b>
+          <span>เทรด</span>
+        </div>
+      </div>
+      <div className="tl-symlegend">
+        {data.map((s) => (
+          <span key={s.key}><i style={{ background: s.color }} />{s.key} · {s.pct}%</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SecondaryStats({ stats }) {
+  return (
+    <div className="tl-card span2">
+      <div className="tl-secgrid">
+        <div className="tl-seccard">
+          <span className="tl-sec-icon gold">🏆</span>
+          <div>
+            <span className="tl-kpi-l">ชนะติดต่อกัน</span>
+            <span className="tl-kpi-v">{stats.maxWinStreak} <small>เทรด</small></span>
+          </div>
+        </div>
+        <div className="tl-seccard">
+          <span className="tl-sec-icon loss">▲</span>
+          <div>
+            <span className="tl-kpi-l">แพ้ติดต่อกัน</span>
+            <span className="tl-kpi-v">{stats.maxLossStreak} <small>เทรด</small></span>
+          </div>
+        </div>
+        <div className="tl-seccard">
+          <span className="tl-sec-icon blue">◷</span>
+          <div>
+            <span className="tl-kpi-l">เวลาที่ดีที่สุด</span>
+            {stats.bestTime ? (
+              <React.Fragment>
+                <span className="tl-kpi-v tl-kpi-v-sm">{stats.bestTime.label}</span>
+                <span className="tl-kpi-s">Win Rate {stats.bestTime.wr}%</span>
+              </React.Fragment>
+            ) : <span className="tl-kpi-s">ยังไม่มีข้อมูลเวลา</span>}
+          </div>
+        </div>
+        <div className="tl-seccard">
+          <span className="tl-sec-icon gold">📅</span>
+          <div>
+            <span className="tl-kpi-l">วันที่กำไรดีที่สุด</span>
+            {stats.bestDay ? (
+              <React.Fragment>
+                <span className="tl-kpi-v tl-kpi-v-sm">วัน{stats.bestDay.day}</span>
+                <span className="tl-kpi-s">Win Rate {stats.bestDay.wr}%</span>
+              </React.Fragment>
+            ) : <span className="tl-kpi-s">—</span>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DiscBlock({ title, data, cur, good }) {
+  return (
+    <div className={`tl-disc-block ${good ? "planned" : "broke"}`}>
+      <span className="tl-disc-title">{title}</span>
+      <strong className={data.pnl >= 0 ? "profit" : "loss"}>{money(data.pnl, cur)}</strong>
+      <div className="tl-disc-meta"><span>{data.n} เทรด</span><span>ชนะ {data.wr}%</span></div>
+      <div className="tl-disc-avg">เฉลี่ย {money(data.avg, cur)}/ไม้</div>
+    </div>
+  );
+}
+function disciplineVerdict(disc, cur) {
+  if (disc.planned.n === 0 || disc.broke.n === 0)
+    return "บันทึกทั้งไม้ที่ทำตามแผนและไม้ที่หลุดแผน เพื่อดูว่าวินัยมีผลต่อกำไรแค่ไหน";
+  const gap = disc.planned.avg - disc.broke.avg;
+  if (gap > 0) return `เมื่อทำตามแผน คุณทำได้ดีกว่าตอนหลุดแผนเฉลี่ย ${money(gap, cur)} ต่อไม้ — วินัยคือ edge ของคุณ`;
+  return `รอบนี้ไม้ที่หลุดแผนกลับได้ผลดีกว่า ${money(-gap, cur)} ต่อไม้ — ระวังการเรียนรู้ผิดจากตัวอย่างน้อยเกินไป`;
+}
+function scoreVerdict(buckets) {
+  const high = buckets.filter((b) => b.key === "long_high" || b.key === "short_high");
+  const rest = buckets.filter((b) => b.key !== "long_high" && b.key !== "short_high");
+  if (high.length === 0)
+    return "ยังไม่มีไม้ที่สัญญาณสอดคล้องกันสูง (L++/S++) ลองสะสมข้อมูลเพิ่มเพื่อเทียบว่าความมั่นใจสูงให้ผลดีกว่าจริงไหม";
+  const highWinAvg = high.reduce((s, b) => s + b.n * (b.wr / 100), 0) / Math.max(1, high.reduce((s, b) => s + b.n, 0));
+  const restWinAvg = rest.length
+    ? rest.reduce((s, b) => s + b.n * (b.wr / 100), 0) / Math.max(1, rest.reduce((s, b) => s + b.n, 0))
+    : null;
+  if (restWinAvg === null) return `ไม้ที่สัญญาณสอดคล้องสูง (L++/S++) มีอัตราชนะเฉลี่ย ${Math.round(highWinAvg * 100)}%`;
+  const diff = Math.round((highWinAvg - restWinAvg) * 100);
+  if (diff > 0) return `ไม้ที่สัญญาณสอดคล้องกันสูงชนะมากกว่าไม้ที่สัญญาณขัดแย้ง/ปานกลางประมาณ ${diff} จุดเปอร์เซ็นต์ — รอสัญญาณให้ตรงกันคุ้มค่า`;
+  if (diff < 0) return `น่าสนใจ: ไม้ที่สัญญาณ "สอดคล้องสูง" กลับชนะน้อยกว่าไม้อื่นอยู่ ${Math.abs(diff)} จุดเปอร์เซ็นต์ — อาจต้องทบทวนว่าสัญญาณชุดนี้ใช้ยืนยันเทรนด์ได้จริงหรือเข้าช้าเกินไป`;
+  return "ไม้ที่สัญญาณสอดคล้องสูงกับไม้อื่นให้อัตราชนะใกล้เคียงกัน";
+}
+
+/* ---------- custom SVG equity chart (no external chart lib) ---------- */
+function EquityChart({ data, cur }) {
+  const [hover, setHover] = useState(null);
+  if (!data.length) return null;
+  const W = 700, H = 220, padL = 46, padR = 10, padT = 10, padB = 24;
+  const ys = data.map((d) => d.equity);
+  const minY = Math.min(0, ...ys), maxY = Math.max(0, ...ys);
+  const spanY = (maxY - minY) || 1;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const xFor = (i) => padL + (data.length <= 1 ? innerW / 2 : (i / (data.length - 1)) * innerW);
+  const yFor = (v) => padT + innerH - ((v - minY) / spanY) * innerH;
+  const pathD = data.map((d, i) => `${i === 0 ? "M" : "L"}${xFor(i).toFixed(1)},${yFor(d.equity).toFixed(1)}`).join(" ");
+  const zeroY = yFor(0);
+  const areaD = `${pathD} L${xFor(data.length - 1).toFixed(1)},${zeroY.toFixed(1)} L${xFor(0).toFixed(1)},${zeroY.toFixed(1)} Z`;
+
+  const handleMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relX = ((e.clientX - rect.left) / rect.width) * W;
+    let idx = Math.round(((relX - padL) / innerW) * (data.length - 1));
+    idx = Math.max(0, Math.min(data.length - 1, idx));
+    setHover(idx);
+  };
+
+  return (
+    <div className="tl-eqwrap" onMouseLeave={() => setHover(null)}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="tl-eqsvg" onMouseMove={handleMove}>
+        <defs>
+          <linearGradient id="gEq" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#4BD1A0" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#4BD1A0" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <line x1={padL} y1={zeroY} x2={W - padR} y2={zeroY} stroke="#2A3340" />
+        <path d={areaD} fill="url(#gEq)" stroke="none" />
+        <path d={pathD} fill="none" stroke="#4BD1A0" strokeWidth="2" />
+        {hover != null && (
+          <React.Fragment>
+            <line x1={xFor(hover)} y1={padT} x2={xFor(hover)} y2={H - padB} stroke="#3A4555" strokeDasharray="3,3" />
+            <circle cx={xFor(hover)} cy={yFor(data[hover].equity)} r="4" fill="#4BD1A0" />
+          </React.Fragment>
+        )}
+        <text x={4} y={padT + 8} fontSize="10" fill="#8A96A8">{cur}{Math.round(maxY)}</text>
+        <text x={4} y={H - padB + 4} fontSize="10" fill="#8A96A8">{cur}{Math.round(minY)}</text>
+      </svg>
+      {hover != null && (
+        <div className="tl-tip tl-eqtip" style={{ left: `${Math.min(88, Math.max(12, (xFor(hover) / W) * 100))}%`, top: "6px" }}>
+          <div>ไม้ที่ {hover + 1} · {shortDate(data[hover].date)}</div>
+          <div>ทุนสะสม <b className={data[hover].equity >= 0 ? "profit" : "loss"}>{money(data[hover].equity, cur)}</b></div>
+          <div>ไม้นี้ <b className={data[hover].r >= 0 ? "profit" : "loss"}>{money(data[hover].r, cur)}</b></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MarketBars({ data, cur }) {
+  const maxAbs = Math.max(1, ...data.map((d) => Math.abs(d.pnl)));
+  return (
+    <div className="tl-marketbars">
+      {data.map((m) => (
+        <div key={m.key} className="tl-marketbar-row">
+          <span className="tl-marketbar-label">{m.th}</span>
+          <div className="tl-marketbar-track">
+            <div className="tl-marketbar-fill" style={{ width: `${(Math.abs(m.pnl) / maxAbs) * 100}%`, background: m.pnl >= 0 ? m.color : "#E5695F" }} />
+          </div>
+          <span className={`tl-marketbar-val mono ${m.pnl >= 0 ? "profit" : "loss"}`}>{money(m.pnl, cur)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ============================================================
+   OPEN POSITIONS
+============================================================ */
+function OpenPositions({ items, onClose }) {
+  const sorted = [...items].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  return (
+    <section className="tl-openpos">
+      <div className="tl-openpos-h">
+        <span className="tl-eyebrow gold">โพซิชันที่เปิดอยู่</span>
+        <span className="tl-card-note">{items.length} รายการ</span>
+      </div>
+      <div className="tl-openpos-list">
+        {sorted.map((t) => (
+          <div key={t.id} className="tl-openpos-item">
+            <span className="tl-chip" style={{ "--c": MARKETS[t.market].color }}>{MARKETS[t.market].th}</span>
+            <span className="mono tl-openpos-sym">{t.symbol || "—"}</span>
+            <span className={`tl-dir ${t.direction}`}>{t.direction === "long" ? "Long" : "Short"}</span>
+            <span className="mut">เข้า {shortDate(t.date)}</span>
+            {t.entry != null && <span className="mono mut">@ {t.entry}</span>}
+            <span className="tl-openpos-days">{daysSince(t.date)}</span>
+            <button className="tl-closebtn" onClick={() => onClose(t)}>ปิดสถานะ</button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   LOG (table)
+============================================================ */
+function Log({ trades, cur, onEdit, onDelete }) {
+  return (
+    <div className="tl-card">
+      <div className="tl-table-wrap">
+        <table className="tl-table">
+          <thead>
+            <tr>
+              <th>วันที่</th><th>ตลาด</th><th>สัญลักษณ์</th><th>ทิศ</th><th>สถานะ</th>
+              <th className="r">ผล</th><th>สัญญาณ</th><th>อารมณ์</th><th>แผน</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {trades.map((t) => {
+              const open = t.status === "open";
+              return (
+                <tr key={t.id} className={open ? "tl-row-open" : ""}>
+                  <td className="mut">{shortDate(t.date)}</td>
+                  <td><span className="tl-chip" style={{ "--c": MARKETS[t.market].color }}>{MARKETS[t.market].th}</span></td>
+                  <td className="mono">{t.symbol || "—"}</td>
+                  <td><span className={`tl-dir ${t.direction}`}>{t.direction === "long" ? "Long" : "Short"}</span></td>
+                  <td>{open ? <span className="tl-status-open">◐ เปิดอยู่</span> : <span className="tl-status-closed">● ปิดแล้ว</span>}</td>
+                  <td className={`r mono ${open ? "mut" : t.result >= 0 ? "profit" : "loss"}`}>{open ? "—" : money(t.result, cur)}</td>
+                  <td><SignalCell signals={t.signals} /></td>
+                  <td className="mut">{t.emotion ? EMOTIONS[t.emotion].th : "—"}</td>
+                  <td>{t.followedPlan ? <span className="tl-ok">✓</span> : <span className="tl-no">✕</span>}</td>
+                  <td className="r">
+                    <button className="tl-icon" onClick={() => onEdit(t)} title={open ? "ปิดสถานะ" : "แก้ไข"}>{open ? "◐" : "✎"}</button>
+                    <button className="tl-icon" onClick={() => onDelete(t.id)} title="ลบ">🗑</button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SignalCell({ signals }) {
+  if (!signals) return <span className="mut">—</span>;
+  const score = signalScore(signals);
+  const chips = [
+    signals.cdcDay && { t: `D:${CDC_STATES[signals.cdcDay].short}`, tone: CDC_STATES[signals.cdcDay].tone },
+    signals.cdc2h && { t: `2H:${CDC_STATES[signals.cdc2h].short}`, tone: CDC_STATES[signals.cdc2h].tone },
+    signals.dowDay && { t: `D:${DOW_STATES[signals.dowDay].short}`, tone: DOW_STATES[signals.dowDay].tone },
+    signals.dow2h && { t: `2H:${DOW_STATES[signals.dow2h].short}`, tone: DOW_STATES[signals.dow2h].tone },
+    signals.macdDay && { t: "MACD", tone: MACD_STATES[signals.macdDay].tone },
+  ].filter(Boolean);
+  if (chips.length === 0) return <span className="mut">—</span>;
+  return (
+    <div className="tl-sigcell">
+      {score && (
+        <span className="tl-sigchip tl-sigchip-score" style={{ "--c": TONE_COLOR[score.tone] }} title={score.label}>{score.short}</span>
+      )}
+      {chips.map((c, i) => (
+        <span key={i} className="tl-sigchip" style={{ "--c": TONE_COLOR[c.tone] }}>{c.t}</span>
+      ))}
+    </div>
+  );
+}
+
+/* ============================================================
+   FORM
+============================================================ */
+function ScorePreview({ signals }) {
+  const s = signalScore(signals);
+  if (!s) return (
+    <div className="tl-scoreprev empty">
+      <span>คะแนนสัญญาณ</span>
+      <small>เลือกสัญญาณด้านบนเพื่อดูคะแนนความสอดคล้อง</small>
+    </div>
+  );
+  return (
+    <div className="tl-scoreprev" style={{ "--tone": TONE_COLOR[s.tone] }}>
+      <span className="tl-scoreprev-badge">{s.short}</span>
+      <div className="tl-scoreprev-body">
+        <b>{s.label}</b>
+        <small>{s.n}/5 สัญญาณระบุแล้ว · {s.sum > 0 ? "+" : ""}{s.sum} คะแนน</small>
+      </div>
+    </div>
+  );
+}
+
+function TradeForm({ initial, cur, onClose, onSave }) {
+  const [f, setF] = useState(() => initial || {
+    id: uid(), date: todayStr(), time: "", market: "crypto", symbol: "",
+    direction: "long", entry: "", exit: "", size: "",
+    result: "", status: "closed", followedPlan: true, emotion: "calm", discipline: 4, notes: "",
+    signals: { cdcDay: null, cdc2h: null, dowDay: null, dow2h: null, macdDay: null },
+  });
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+  const setSignal = (k, v) => setF((p) => ({ ...p, signals: { ...p.signals, [k]: v } }));
+  const isOpenStatus = f.status === "open";
+
+  const suggested = useMemo(() => {
+    const e = parseFloat(f.entry), x = parseFloat(f.exit), s = parseFloat(f.size);
+    if (!isFinite(e) || !isFinite(x) || !isFinite(s)) return null;
+    const dir = f.direction === "long" ? 1 : -1;
+    return Math.round((x - e) * s * dir * 100) / 100;
+  }, [f.entry, f.exit, f.size, f.direction]);
+
+  const canSave = isOpenStatus || (f.result !== "" && !isNaN(parseFloat(f.result)));
+
+  const submit = () => {
+    if (!canSave) return;
+    const resultNum = f.result === "" || isNaN(parseFloat(f.result)) ? 0 : parseFloat(f.result);
+    onSave({
+      ...f,
+      symbol: f.symbol.trim().toUpperCase(),
+      entry: numOrNull(f.entry), exit: numOrNull(f.exit), size: numOrNull(f.size),
+      result: resultNum, discipline: Number(f.discipline),
+    });
+  };
+
+  return (
+    <div className="tl-overlay" onClick={onClose}>
+      <div className="tl-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="tl-modal-h">
+          <h2>{initial ? (initial.status === "open" ? "อัปเดต/ปิดสถานะ" : "แก้ไขเทรด") : "บันทึกเทรดใหม่"}</h2>
+          <button className="tl-x" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="tl-form">
+          <div className="tl-statustoggle">
+            <button type="button" className={`tl-statusbtn closed ${!isOpenStatus ? "on" : ""}`} onClick={() => set("status", "closed")}>
+              <i>●</i> ปิดสถานะแล้ว
+            </button>
+            <button type="button" className={`tl-statusbtn open ${isOpenStatus ? "on" : ""}`} onClick={() => set("status", "open")}>
+              <i>◐</i> ยังเปิดสถานะอยู่
+            </button>
+          </div>
+
+          <div className="tl-row">
+            <label className="tl-field">
+              <span>วันที่</span>
+              <input type="date" value={f.date} onChange={(e) => set("date", e.target.value)} />
+            </label>
+            <label className="tl-field">
+              <span>เวลาเข้า (ถ้ามี)</span>
+              <input type="time" value={f.time || ""} onChange={(e) => set("time", e.target.value)} />
+            </label>
+            <label className="tl-field">
+              <span>ตลาด</span>
+              <div className="tl-seg">
+                {Object.entries(MARKETS).map(([k, m]) => (
+                  <button key={k} type="button" className={f.market === k ? "on" : ""}
+                    style={f.market === k ? { "--c": m.color } : {}} onClick={() => set("market", k)}>{m.th}</button>
+                ))}
+              </div>
+            </label>
+          </div>
+
+          <div className="tl-row">
+            <label className="tl-field">
+              <span>สัญลักษณ์</span>
+              <input list="syms" value={f.symbol} placeholder="เช่น BTC" onChange={(e) => set("symbol", e.target.value)} />
+              <datalist id="syms">
+                {MARKETS[f.market].symbols.map((s) => <option key={s} value={s} />)}
+              </datalist>
+            </label>
+            <label className="tl-field">
+              <span>ทิศทาง</span>
+              <div className="tl-seg two">
+                <button type="button" className={f.direction === "long" ? "on long" : ""} onClick={() => set("direction", "long")}>Long</button>
+                <button type="button" className={f.direction === "short" ? "on short" : ""} onClick={() => set("direction", "short")}>Short</button>
+              </div>
+            </label>
+          </div>
+
+          <div className="tl-sigform">
+            <span className="tl-sigform-title">สัญญาณเข้าเทรด</span>
+
+            <div className="tl-sigform-group">
+              <span className="tl-sigform-group-label">CDC Action Zone</span>
+              <div className="tl-sigform-row">
+                <span className="tl-sigform-tf">TF Day</span>
+                <div className="tl-seg two">
+                  {Object.entries(CDC_STATES).map(([k, v]) => (
+                    <button key={k} type="button" className={f.signals.cdcDay === k ? `on ${v.tone === "up" ? "long" : "short"}` : ""}
+                      onClick={() => setSignal("cdcDay", k)}>{v.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="tl-sigform-row">
+                <span className="tl-sigform-tf">TF 2H</span>
+                <div className="tl-seg two">
+                  {Object.entries(CDC_STATES).map(([k, v]) => (
+                    <button key={k} type="button" className={f.signals.cdc2h === k ? `on ${v.tone === "up" ? "long" : "short"}` : ""}
+                      onClick={() => setSignal("cdc2h", k)}>{v.label}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="tl-sigform-group">
+              <span className="tl-sigform-group-label">Dow Theory</span>
+              <div className="tl-sigform-row">
+                <span className="tl-sigform-tf">TF Day</span>
+                <div className="tl-seg two">
+                  {Object.entries(DOW_STATES).map(([k, v]) => (
+                    <button key={k} type="button" className={f.signals.dowDay === k ? `on ${v.tone === "up" ? "long" : "short"}` : ""}
+                      onClick={() => setSignal("dowDay", k)}>{v.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="tl-sigform-row">
+                <span className="tl-sigform-tf">TF 2H</span>
+                <div className="tl-seg two">
+                  {Object.entries(DOW_STATES).map(([k, v]) => (
+                    <button key={k} type="button" className={f.signals.dow2h === k ? `on ${v.tone === "up" ? "long" : "short"}` : ""}
+                      onClick={() => setSignal("dow2h", k)}>{v.label}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="tl-sigform-group">
+              <span className="tl-sigform-group-label">MACD · TF Day</span>
+              <div className="tl-macd-grid">
+                {Object.entries(MACD_STATES).map(([k, v]) => (
+                  <button key={k} type="button" className={`tl-macd-btn ${f.signals.macdDay === k ? "on" : ""}`}
+                    style={{ "--tone": TONE_COLOR[v.tone] }} onClick={() => setSignal("macdDay", k)}>
+                    <b>{v.label}</b><span>{v.trend}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <ScorePreview signals={f.signals} />
+          </div>
+
+          <div className="tl-row three">
+            <label className="tl-field"><span>ราคาเข้า</span>
+              <input type="number" step="any" value={f.entry} onChange={(e) => set("entry", e.target.value)} /></label>
+            <label className="tl-field"><span>ราคาออก{isOpenStatus ? " (ถ้ามี)" : ""}</span>
+              <input type="number" step="any" value={f.exit} onChange={(e) => set("exit", e.target.value)} /></label>
+            <label className="tl-field"><span>ขนาด/จำนวน</span>
+              <input type="number" step="any" value={f.size} onChange={(e) => set("size", e.target.value)} /></label>
+          </div>
+
+          {isOpenStatus ? (
+            <div className="tl-openhint">
+              <i>◐</i>
+              <span>โพซิชันนี้ยังเปิดอยู่ ยังไม่ต้องใส่ผลลัพธ์ตอนนี้ก็ได้ — กลับมาแก้ไขเพื่อปิดสถานะและใส่ P&L ทีหลังได้</span>
+            </div>
+          ) : (
+            <label className="tl-field result">
+              <span>ผลลัพธ์ P&L ({cur})
+                {suggested !== null && (
+                  <button type="button" className="tl-suggest" onClick={() => set("result", String(suggested))}>
+                    ใช้ค่าคำนวณ {money(suggested, cur)}
+                  </button>
+                )}
+              </span>
+              <input type="number" step="any" value={f.result} placeholder="กำไรใส่บวก / ขาดทุนใส่ลบ"
+                onChange={(e) => set("result", e.target.value)} className="tl-result-input" />
+            </label>
+          )}
+
+          <div className="tl-row">
+            <label className="tl-field">
+              <span>อารมณ์ตอนเข้า</span>
+              <div className="tl-emo-pick">
+                {Object.entries(EMOTIONS).map(([k, e]) => (
+                  <button key={k} type="button" className={`${f.emotion === k ? "on" : ""} ${e.good ? "g" : "b"}`} onClick={() => set("emotion", k)}>
+                    <i>{e.glyph}</i>{e.th}
+                  </button>
+                ))}
+              </div>
+            </label>
+          </div>
+
+          <div className="tl-row">
+            <label className="tl-field">
+              <span>ทำตามแผนไหม?</span>
+              <div className="tl-seg two">
+                <button type="button" className={f.followedPlan ? "on long" : ""} onClick={() => set("followedPlan", true)}>ตามแผน ✓</button>
+                <button type="button" className={!f.followedPlan ? "on short" : ""} onClick={() => set("followedPlan", false)}>หลุดแผน ✕</button>
+              </div>
+            </label>
+            <label className="tl-field">
+              <span>คะแนนวินัย · {f.discipline}/5</span>
+              <input type="range" min="1" max="5" value={f.discipline} onChange={(e) => set("discipline", e.target.value)} className="tl-range" />
+            </label>
+          </div>
+
+          <label className="tl-field">
+            <span>บันทึก / เหตุผลที่เข้า</span>
+            <textarea rows={3} value={f.notes} placeholder="setup, เหตุผล, สิ่งที่ได้เรียนรู้..." onChange={(e) => set("notes", e.target.value)} />
+          </label>
+        </div>
+
+        <div className="tl-modal-f">
+          <button className="tl-ghost" onClick={onClose}>ยกเลิก</button>
+          <button className="tl-save" disabled={!canSave} onClick={submit}>
+            {isOpenStatus ? "บันทึกสถานะที่เปิดอยู่" : initial ? "บันทึกการแก้ไข" : "บันทึกเทรด"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   SMALL PIECES
+============================================================ */
+function Kpi({ label, value, sub, tone, big }) {
+  return (
+    <div className={`tl-kpi ${big ? "big" : ""}`}>
+      <span className="tl-kpi-l">{label}</span>
+      <span className={`tl-kpi-v ${tone || ""}`}>{value}</span>
+      {sub && <span className="tl-kpi-s">{sub}</span>}
+    </div>
+  );
+}
+function Empty({ onAdd }) {
+  return (
+    <div className="tl-empty">
+      <div className="tl-empty-mark">▚</div>
+      <h3>ยังไม่มีบันทึกการเทรด</h3>
+      <p>เริ่มบันทึกไม้แรกของคุณ แล้วสถิติ เส้นทุน และรายงานวินัยจะสร้างให้อัตโนมัติ</p>
+      <button className="tl-add" onClick={onAdd}>+ บันทึกเทรดแรก</button>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
