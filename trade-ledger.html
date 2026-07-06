@@ -123,41 +123,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible{outline:2px so
 .tl-avg-foot span{font-size:11.5px; color:var(--mut);}
 .tl-avg-foot b{font-family:'JetBrains Mono'; font-size:16px;}
 
-/* overview header (new dashboard-style KPI row) */
-.tl-ovwrap{padding:16px 18px;}
-.tl-ovkpis{display:grid; grid-template-columns:1.1fr 1fr 1fr 1fr 1fr; gap:16px;}
-.tl-ovkpi{display:flex; flex-direction:column; gap:6px; padding-right:14px; border-right:1px solid var(--line);}
-.tl-ovkpis .tl-ovkpi:last-child{border-right:none; padding-right:0;}
-.tl-ov-trend{font-size:11.5px; font-weight:600;}
-.tl-ovkpi-ring{flex-direction:row; align-items:center; justify-content:space-between; gap:10px;}
-.tl-ovkpi-ring>div{display:flex; flex-direction:column; gap:4px;}
-.tl-spark{width:100%; height:34px; display:block; margin-top:2px;}
-.tl-ring{flex-shrink:0;}
-
-/* equity + symbol donut row */
-.tl-eqrow-card{padding:0;}
-.tl-eqrow{display:grid; grid-template-columns:1.6fr 1fr;}
-.tl-eqrow-main{padding:16px 18px; border-right:1px solid var(--line);}
-.tl-eqrow-side{padding:16px 18px; display:flex; flex-direction:column;}
-.tl-donutrow{display:flex; flex-direction:column; align-items:center; gap:14px; margin-top:6px;}
-.tl-donutwrap{position:relative; margin:0 auto;}
-.tl-donut-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0;}
-.tl-donut-center span{font-size:10.5px; color:var(--mut);}
-.tl-donut-center b{font-family:'JetBrains Mono'; font-size:22px; font-weight:700;}
-.tl-symlegend{display:flex; flex-direction:column; gap:7px; width:100%;}
-.tl-symlegend span{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text);}
-.tl-symlegend i{width:9px; height:9px; border-radius:3px; flex-shrink:0;}
-
-/* secondary stats row (streaks, timing) */
-.tl-secgrid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
-.tl-seccard{display:flex; align-items:center; gap:12px; background:var(--surface2); border:1px solid var(--line); border-radius:12px; padding:13px 14px;}
-.tl-seccard>div{display:flex; flex-direction:column; gap:3px;}
-.tl-sec-icon{font-size:20px; flex-shrink:0;}
-.tl-sec-icon.gold{filter:drop-shadow(0 0 0 var(--gold));}
-.tl-sec-icon.loss{color:var(--loss);}
-.tl-sec-icon.blue{color:#5EC8E0;}
-.tl-kpi-v-sm{font-family:'JetBrains Mono'; font-size:16px; font-weight:700;}
-
 /* signal score bar (dashboard) */
 .tl-scorebar{display:grid; grid-template-columns:repeat(5,1fr); gap:8px;}
 .tl-score-seg{display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; background:var(--surface2); border:1px solid var(--line); border-top:3px solid var(--tone); border-radius:10px; padding:12px 8px;}
@@ -289,11 +254,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible{outline:2px so
   .tl-row, .tl-row.three{grid-template-columns:1fr;}
   .tl-flt{margin-left:0; width:100%; overflow-x:auto;}
   .tl-scorebar{grid-template-columns:repeat(2,1fr);}
-  .tl-ovkpis{grid-template-columns:1fr 1fr;}
-  .tl-ovkpi{border-right:none; border-bottom:1px solid var(--line); padding-right:0; padding-bottom:12px;}
-  .tl-eqrow{grid-template-columns:1fr;}
-  .tl-eqrow-main{border-right:none; border-bottom:1px solid var(--line);}
-  .tl-secgrid{grid-template-columns:1fr 1fr;}
 }
 @media (prefers-reduced-motion:reduce){ *{transition:none !important;} }
 </style>
@@ -315,7 +275,6 @@ const MARKETS = {
   crypto: { label: "Crypto", th: "คริปโต", color: "#7B8CFF", symbols: ["BTC", "ETH", "SOL", "XRP"] },
   gold:   { label: "Gold",   th: "ทองคำ",  color: "#E0A64B", symbols: ["XAU", "GC", "GLD"] },
   oil:    { label: "Oil",    th: "น้ำมัน",  color: "#C77D4A", symbols: ["WTI", "BRENT", "CL"] },
-  currency: { label: "Currency", th: "ค่าเงิน", color: "#5EC8E0", symbols: ["EUR/USD", "GBP/USD", "USD/JPY", "USD/THB", "DXY"] },
 };
 
 const EMOTIONS = {
@@ -500,7 +459,7 @@ function App() {
         <button className={view === "dashboard" ? "on" : ""} onClick={() => setView("dashboard")}>ภาพรวม</button>
         <button className={view === "log" ? "on" : ""} onClick={() => setView("log")}>รายการเทรด</button>
         <div className="tl-flt">
-          {["all", "crypto", "gold", "oil", "currency"].map((k) => (
+          {["all", "crypto", "gold", "oil"].map((k) => (
             <button key={k} className={filter === k ? "on" : ""} onClick={() => setFilter(k)}>
               {k === "all" ? "ทั้งหมด" : MARKETS[k].th}
             </button>
@@ -601,90 +560,8 @@ function computeStats(trades) {
     return { ...b, n: ts.length, pnl: Math.round(p * 100) / 100, wr: ts.length ? Math.round((w / ts.length) * 100) : 0 };
   }).filter((b) => b.n > 0);
 
-  // trend: net of second half vs first half (by trade order) — approximates "vs previous period"
-  let trendPct = null;
-  if (ordered.length >= 4) {
-    const half = Math.floor(ordered.length / 2);
-    const firstNet = ordered.slice(0, half).reduce((s, t) => s + t.result, 0);
-    const secondNet = ordered.slice(half).reduce((s, t) => s + t.result, 0);
-    if (firstNet !== 0) trendPct = Math.round(((secondNet - firstNet) / Math.abs(firstNet)) * 1000) / 10;
-  }
-
-  // rolling sparkline series for avg-win / avg-loss / R:R cards
-  const winsOrdered = ordered.filter((t) => t.result > 0);
-  const lossesOrdered = ordered.filter((t) => t.result < 0);
-  let rw = 0;
-  const avgWinSeries = winsOrdered.map((t, i) => { rw += t.result; return rw / (i + 1); });
-  let rl = 0;
-  const avgLossSeries = lossesOrdered.map((t, i) => { rl += t.result; return rl / (i + 1); });
-  const rrSeries = [];
-  { let sw = 0, wc = 0, sl = 0, lc = 0;
-    for (const t of ordered) {
-      if (t.result > 0) { sw += t.result; wc++; } else if (t.result < 0) { sl += t.result; lc++; }
-      if (wc > 0 && lc > 0) rrSeries.push(Math.abs((sw / wc) / (sl / lc)));
-    }
-  }
-
-  // longest win / loss streaks (all-time, not just current)
-  let curType = null, curLen = 0, maxWinStreak = 0, maxLossStreak = 0;
-  for (const t of ordered) {
-    const type = t.result >= 0 ? "win" : "loss";
-    curLen = type === curType ? curLen + 1 : 1;
-    curType = type;
-    if (type === "win") maxWinStreak = Math.max(maxWinStreak, curLen);
-    else maxLossStreak = Math.max(maxLossStreak, curLen);
-  }
-
-  // best day of week
-  const DOW_TH = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
-  const dowAgg = Array.from({ length: 7 }, () => ({ n: 0, w: 0 }));
-  ordered.forEach((t) => {
-    const d = new Date(t.date + "T00:00:00").getDay();
-    dowAgg[d].n++; if (t.result > 0) dowAgg[d].w++;
-  });
-  let bestDay = null;
-  dowAgg.forEach((a, i) => {
-    if (a.n === 0) return;
-    const wr = Math.round((a.w / a.n) * 100);
-    if (!bestDay || wr > bestDay.wr || (wr === bestDay.wr && a.n > bestDay.n)) bestDay = { day: DOW_TH[i], wr, n: a.n };
-  });
-
-  // best time-of-day window (only if entry time was recorded)
-  const withTime = ordered.filter((t) => t.time);
-  let bestTime = null;
-  if (withTime.length) {
-    const buckets = Array.from({ length: 8 }, () => ({ n: 0, w: 0 }));
-    withTime.forEach((t) => {
-      const hh = parseInt(t.time.split(":")[0], 10);
-      const b = Math.min(7, Math.max(0, Math.floor(hh / 3)));
-      buckets[b].n++; if (t.result > 0) buckets[b].w++;
-    });
-    buckets.forEach((b, i) => {
-      if (b.n === 0) return;
-      const wr = Math.round((b.w / b.n) * 100);
-      const label = `${String(i * 3).padStart(2, "0")}:00-${String(i * 3 + 3).padStart(2, "0")}:00`;
-      if (!bestTime || wr > bestTime.wr || (wr === bestTime.wr && b.n > bestTime.n)) bestTime = { label, wr, n: b.n };
-    });
-  }
-
-  // symbol breakdown donut (top 4 + "อื่นๆ")
-  const DONUT_COLORS = ["#4BD1A0", "#5EC8E0", "#8B7CF6", "#E5695F", "#8A96A8"];
-  const symAgg = {};
-  ordered.forEach((t) => {
-    const key = (t.symbol && t.symbol.trim()) ? t.symbol.trim().toUpperCase() : "อื่นๆ";
-    symAgg[key] = (symAgg[key] || 0) + 1;
-  });
-  let symArr = Object.entries(symAgg).map(([k, n]) => ({ key: k, n })).sort((a, b) => b.n - a.n);
-  let symTop = symArr.slice(0, 4);
-  const symRestN = symArr.slice(4).reduce((s, x) => s + x.n, 0);
-  if (symRestN > 0) symTop.push({ key: "อื่นๆ", n: symRestN });
-  const symTotal = symTop.reduce((s, x) => s + x.n, 0) || 1;
-  const symbolDonut = symTop.map((x, i) => ({ ...x, pct: Math.round((x.n / symTotal) * 1000) / 10, color: DONUT_COLORS[i % DONUT_COLORS.length] }));
-
   return { count, net, wins: wins.length, losses: losses.length, winRate, pf,
-           avgWin, avgLoss, equity, streakLabel, byMarket, disc, byEmotion, signals, scoreBuckets,
-           trendPct, avgWinSeries, avgLossSeries, rrSeries, maxWinStreak, maxLossStreak,
-           bestDay, bestTime, symbolDonut };
+           avgWin, avgLoss, equity, streakLabel, byMarket, disc, byEmotion, signals, scoreBuckets };
 }
 function groupResult(ts) {
   const n = ts.length;
@@ -708,25 +585,13 @@ function Dashboard({ stats, cur }) {
   }
   return (
     <div className="tl-grid">
-      <OverviewHeader stats={stats} cur={cur} />
-
-      <div className="tl-card span2 tl-eqrow-card">
-        <div className="tl-eqrow">
-          <div className="tl-eqrow-main">
-            <div className="tl-card-h">
-              <span className="tl-eyebrow">ผลกำไรสะสม</span>
-              <span className="tl-card-note">{stats.equity.length} เทรด</span>
-            </div>
-            <EquityChart data={stats.equity} cur={cur} />
-          </div>
-          <div className="tl-eqrow-side">
-            <div className="tl-card-h"><span className="tl-eyebrow">สรุปตามสัญลักษณ์</span></div>
-            <SymbolDonut data={stats.symbolDonut} total={stats.count} />
-          </div>
+      <div className="tl-card span2">
+        <div className="tl-card-h">
+          <span className="tl-eyebrow">เส้นทางทุนสะสม</span>
+          <span className="tl-card-note">{stats.equity.length} เทรด</span>
         </div>
+        <EquityChart data={stats.equity} cur={cur} />
       </div>
-
-      <SecondaryStats stats={stats} />
 
       <div className="tl-card span2 tl-disc">
         <div className="tl-card-h"><span className="tl-eyebrow gold">รายงานวินัย · ตามแผน vs หลุดแผน</span></div>
@@ -833,167 +698,6 @@ function Dashboard({ stats, cur }) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-/* ---------- overview header: net profit + win-rate ring + rolling sparklines ---------- */
-function OverviewHeader({ stats, cur }) {
-  const rr = stats.avgLoss ? Math.abs(stats.avgWin / stats.avgLoss) : null;
-  return (
-    <div className="tl-card span2 tl-ovwrap">
-      <div className="tl-ovkpis">
-        <div className="tl-ovkpi">
-          <span className="tl-kpi-l">กำไรสุทธิ</span>
-          <span className={`tl-kpi-v ${stats.net >= 0 ? "profit" : "loss"}`}>{money(stats.net, cur)}</span>
-          {stats.trendPct !== null && (
-            <span className={`tl-ov-trend ${stats.trendPct >= 0 ? "profit" : "loss"}`}>
-              {stats.trendPct >= 0 ? "▲" : "▼"} {Math.abs(stats.trendPct)}% จากช่วงก่อนหน้า
-            </span>
-          )}
-        </div>
-
-        <div className="tl-ovkpi tl-ovkpi-ring">
-          <div>
-            <span className="tl-kpi-l">อัตราชนะ</span>
-            <span className="tl-kpi-v">{stats.winRate}%</span>
-            <span className="tl-kpi-s">{stats.wins}W / {stats.losses}L</span>
-          </div>
-          <RingProgress percent={stats.winRate} color="#4BD1A0" />
-        </div>
-
-        <div className="tl-ovkpi">
-          <span className="tl-kpi-l">กำไรเฉลี่ยต่อเทรด</span>
-          <span className="tl-kpi-v profit">{money(stats.avgWin, cur)}</span>
-          <Sparkline data={stats.avgWinSeries} color="#4BD1A0" />
-        </div>
-
-        <div className="tl-ovkpi">
-          <span className="tl-kpi-l">ขาดทุนเฉลี่ยต่อเทรด</span>
-          <span className="tl-kpi-v loss">{money(stats.avgLoss, cur)}</span>
-          <Sparkline data={stats.avgLossSeries} color="#E5695F" />
-        </div>
-
-        <div className="tl-ovkpi">
-          <span className="tl-kpi-l">Risk/Reward เฉลี่ย</span>
-          <span className="tl-kpi-v">{rr ? `${rr.toFixed(2)} : 1` : "—"}</span>
-          <Sparkline data={stats.rrSeries} color="#5EC8E0" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Sparkline({ data, color }) {
-  const W = 100, H = 34;
-  if (!data || data.length < 2) return <svg viewBox={`0 0 ${W} ${H}`} className="tl-spark" />;
-  const min = Math.min(...data), max = Math.max(...data);
-  const span = (max - min) || 1;
-  const pts = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * W;
-    const y = H - ((v - min) / span) * H;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(" ");
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="tl-spark" preserveAspectRatio="none">
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
-
-function RingProgress({ percent, color, size = 60, strokeWidth = 8 }) {
-  const r = (size - strokeWidth) / 2;
-  const c = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(100, percent));
-  const dash = (pct / 100) * c;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="tl-ring">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#2A3340" strokeWidth={strokeWidth} />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={strokeWidth}
-        strokeDasharray={`${dash} ${c - dash}`} strokeLinecap="round"
-        transform={`rotate(-90 ${size / 2} ${size / 2})`} />
-    </svg>
-  );
-}
-
-function SymbolDonut({ data, total }) {
-  if (!data || data.length === 0) return <p className="mut" style={{ fontSize: 12.5 }}>ยังไม่มีข้อมูลสัญลักษณ์</p>;
-  const size = 132, strokeWidth = 20, r = (size - strokeWidth) / 2, c = 2 * Math.PI * r;
-  let offset = 0;
-  const arcs = data.map((s) => {
-    const len = (s.pct / 100) * c;
-    const arc = { ...s, len, offset };
-    offset += len;
-    return arc;
-  });
-  return (
-    <div className="tl-donutrow">
-      <div className="tl-donutwrap" style={{ width: size, height: size }}>
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          {arcs.map((s, i) => (
-            <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={s.color} strokeWidth={strokeWidth}
-              strokeDasharray={`${s.len} ${c - s.len}`} strokeDashoffset={-s.offset}
-              transform={`rotate(-90 ${size / 2} ${size / 2})`} />
-          ))}
-        </svg>
-        <div className="tl-donut-center">
-          <span>รวม</span>
-          <b>{total}</b>
-          <span>เทรด</span>
-        </div>
-      </div>
-      <div className="tl-symlegend">
-        {data.map((s) => (
-          <span key={s.key}><i style={{ background: s.color }} />{s.key} · {s.pct}%</span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SecondaryStats({ stats }) {
-  return (
-    <div className="tl-card span2">
-      <div className="tl-secgrid">
-        <div className="tl-seccard">
-          <span className="tl-sec-icon gold">🏆</span>
-          <div>
-            <span className="tl-kpi-l">ชนะติดต่อกัน</span>
-            <span className="tl-kpi-v">{stats.maxWinStreak} <small>เทรด</small></span>
-          </div>
-        </div>
-        <div className="tl-seccard">
-          <span className="tl-sec-icon loss">▲</span>
-          <div>
-            <span className="tl-kpi-l">แพ้ติดต่อกัน</span>
-            <span className="tl-kpi-v">{stats.maxLossStreak} <small>เทรด</small></span>
-          </div>
-        </div>
-        <div className="tl-seccard">
-          <span className="tl-sec-icon blue">◷</span>
-          <div>
-            <span className="tl-kpi-l">เวลาที่ดีที่สุด</span>
-            {stats.bestTime ? (
-              <React.Fragment>
-                <span className="tl-kpi-v tl-kpi-v-sm">{stats.bestTime.label}</span>
-                <span className="tl-kpi-s">Win Rate {stats.bestTime.wr}%</span>
-              </React.Fragment>
-            ) : <span className="tl-kpi-s">ยังไม่มีข้อมูลเวลา</span>}
-          </div>
-        </div>
-        <div className="tl-seccard">
-          <span className="tl-sec-icon gold">📅</span>
-          <div>
-            <span className="tl-kpi-l">วันที่กำไรดีที่สุด</span>
-            {stats.bestDay ? (
-              <React.Fragment>
-                <span className="tl-kpi-v tl-kpi-v-sm">วัน{stats.bestDay.day}</span>
-                <span className="tl-kpi-s">Win Rate {stats.bestDay.wr}%</span>
-              </React.Fragment>
-            ) : <span className="tl-kpi-s">—</span>}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1220,7 +924,7 @@ function ScorePreview({ signals }) {
 
 function TradeForm({ initial, cur, onClose, onSave }) {
   const [f, setF] = useState(() => initial || {
-    id: uid(), date: todayStr(), time: "", market: "crypto", symbol: "",
+    id: uid(), date: todayStr(), market: "crypto", symbol: "",
     direction: "long", entry: "", exit: "", size: "",
     result: "", status: "closed", followedPlan: true, emotion: "calm", discipline: 4, notes: "",
     signals: { cdcDay: null, cdc2h: null, dowDay: null, dow2h: null, macdDay: null },
@@ -1271,10 +975,6 @@ function TradeForm({ initial, cur, onClose, onSave }) {
             <label className="tl-field">
               <span>วันที่</span>
               <input type="date" value={f.date} onChange={(e) => set("date", e.target.value)} />
-            </label>
-            <label className="tl-field">
-              <span>เวลาเข้า (ถ้ามี)</span>
-              <input type="time" value={f.time || ""} onChange={(e) => set("time", e.target.value)} />
             </label>
             <label className="tl-field">
               <span>ตลาด</span>
